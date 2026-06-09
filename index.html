@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#090b1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>Boss Clicker Deluxe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root{
+      --bg1:#090b1a; --bg2:#17204a; --card:rgba(255,255,255,.10); --card2:rgba(255,255,255,.16);
+      --gold:#ffd76a; --good:#54ffac; --danger:#ff4f70; --text:#fff;
+    }
+    html, body{ width:100%; min-height:100%; overscroll-behavior:none; }
+    body{
+      min-height:100dvh; overflow:hidden; touch-action:manipulation; color:var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at 50% 15%, rgba(103,126,234,.35), transparent 32%),
+        linear-gradient(135deg,var(--bg1),var(--bg2));
+    }
+    body::before{
+      content:""; position:fixed; inset:0; pointer-events:none; opacity:.32;
+      background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size:34px 34px;
+    }
+    .game-container{ min-height:100dvh; padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:10px; position:relative; overflow:hidden; }
+    .top-card,.upgrade-section,.quest-card{
+      width:min(440px,100%); background:var(--card); border:1px solid rgba(255,255,255,.16);
+      border-radius:20px; padding:14px 16px; backdrop-filter: blur(12px); box-shadow:0 18px 45px rgba(0,0,0,.26);
+    }
+    .title-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    h1{ font-size:clamp(1.05rem,4.2vw,1.35rem); letter-spacing:.5px; }
+    .badge{ background:rgba(255,215,106,.16); color:var(--gold); border:1px solid rgba(255,215,106,.35); padding:6px 10px; border-radius:999px; font-weight:800; }
+    .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .stat{ background:rgba(0,0,0,.18); border-radius:14px; padding:8px; text-align:center; font-weight:800; min-width:0; }
+    .stat small{ display:block; color:rgba(255,255,255,.72); font-size:.72rem; font-weight:700; margin-bottom:3px; }
+    .gold{ color:var(--gold); } .green{ color:var(--good); } .red{ color:var(--danger); }
+
+    .hp-wrap{ width:min(440px,100%); }
+    .boss-name-row{ display:flex; justify-content:space-between; align-items:center; margin:0 4px 7px; font-weight:900; }
+    .hp-bar-container{ position:relative; width:100%; height:34px; border-radius:999px; background:rgba(0,0,0,.35); overflow:hidden; border:2px solid rgba(255,255,255,.24); box-shadow: inset 0 4px 10px rgba(0,0,0,.35); }
+    .hp-fill{ height:100%; width:100%; border-radius:999px; background:linear-gradient(90deg,#ff335f,#ff8b38,#ffe45e); transition:width .18s ease; }
+    .hp-text{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:900; text-shadow:0 2px 5px rgba(0,0,0,.75); font-size:.92rem; }
+    .old-hp-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:.22; image-rendering:pixelated; pointer-events:none; }
+
+    .boss-area{ position:relative; width:min(48dvh,250px,62vw); height:min(48dvh,250px,62vw); display:flex; align-items:center; justify-content:center; margin:0; flex:0 0 auto; }
+    .boss-shadow{ position:absolute; bottom:8px; width:76%; height:12%; background:rgba(0,0,0,.38); border-radius:50%; filter:blur(3px); }
+    .boss-image{ width:88%; height:88%; cursor:pointer; image-rendering:pixelated; user-select:none; z-index:1; filter: drop-shadow(0 14px 18px rgba(0,0,0,.55)); transition:transform .08s, filter .12s; }
+    .boss-image:hover{ transform:scale(1.04); }
+    .boss-image:active,.boss-image.hit{ transform:scale(.92) rotate(-2deg); filter:drop-shadow(0 14px 18px rgba(0,0,0,.55)) brightness(1.35); }
+    .damage-text{ position:fixed; color:#ff5477; font-size:1.45rem; font-weight:900; pointer-events:none; animation:floatUp .85s ease-out forwards; text-shadow:2px 2px 4px rgba(0,0,0,.75); z-index:50; }
+    .coin-pop{ position:fixed; color:var(--gold); font-size:1rem; font-weight:900; pointer-events:none; animation:coinFly .75s ease-out forwards; z-index:49; }
+    @keyframes floatUp{ from{opacity:1; transform:translateY(0) scale(1);} to{opacity:0; transform:translateY(-90px) scale(1.45);} }
+    @keyframes coinFly{ from{opacity:1; transform:translateY(0) scale(1);} to{opacity:0; transform:translate(28px,-58px) scale(.9);} }
+
+    .upgrade-section h2{ text-align:center; font-size:1.02rem; margin-bottom:8px; }
+    .upgrade-btn{ width:100%; padding:12px 14px; margin-bottom:8px; min-height:54px; background:linear-gradient(135deg,#667eea,#764ba2); border:0; border-radius:15px; color:white; font-size:.98rem; font-weight:900; cursor:pointer; transition:transform .12s, box-shadow .16s, opacity .16s; text-align:left; }
+    .upgrade-btn:active{ transform:scale(.98); }
+    .upgrade-btn:disabled{ background:#4b4d61; cursor:not-allowed; opacity:.62; }
+    .upgrade-btn:not(:disabled):hover{ box-shadow:0 8px 24px rgba(102,126,234,.38); }
+    .upgrade-info{ display:flex; justify-content:space-between; gap:10px; font-size:.82rem; margin-top:6px; opacity:.95; }
+    .upgrade-cost{ color:var(--gold); } .upgrade-level{ color:var(--good); }
+    .quest-card{ padding:11px 14px; font-weight:800; text-align:center; color:rgba(255,255,255,.9); }
+    .progress-mini{ margin-top:8px; height:8px; background:rgba(0,0,0,.25); border-radius:999px; overflow:hidden; }
+    .progress-mini div{ height:100%; width:0%; background:linear-gradient(90deg,#54ffac,#ffd76a); transition:width .2s; }
+
+    .boss-defeated{ position:fixed; inset:0; padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); background:rgba(0,0,0,.82); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; padding:24px; text-align:center; }
+    .boss-defeated h1{ color:var(--gold); font-size:2.15rem; margin-bottom:14px; }
+    .boss-defeated p{ color:white; font-size:1.08rem; margin-bottom:20px; line-height:1.5; }
+    .boss-defeated button,.small-btn{ padding:15px 24px; font-size:1.05rem; background:linear-gradient(135deg,#667eea,#764ba2); border:0; border-radius:15px; color:white; cursor:pointer; font-weight:900; }
+    .small-btn{ padding:9px 12px; font-size:.8rem; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); }
+    .shake{ animation:shake .22s linear; }
+    @keyframes shake{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+    .mobile-actions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
+    .small-btn{ min-height:42px; touch-action:manipulation; }
+
+    @media (max-width:480px){
+      .top-card,.upgrade-section,.quest-card{ border-radius:16px; padding:10px 11px; }
+      .title-row{ margin-bottom:8px; }
+      .stats-grid{ gap:7px; }
+      .stat{ padding:7px 5px; font-size:.92rem; }
+      .stat small{ font-size:.66rem; }
+      .hp-bar-container{ height:30px; }
+      .boss-name-row{ font-size:.82rem; margin-bottom:5px; }
+      .quest-card{ font-size:.78rem; }
+      .upgrade-info{ font-size:.72rem; }
+      .upgrade-btn{ font-size:.88rem; padding:10px 11px; }
+    }
+
+    @media (max-height:720px){
+      .game-container{ gap:7px; }
+      .top-card,.upgrade-section,.quest-card{ padding:8px 10px; }
+      .boss-area{ width:min(34dvh,210px,55vw); height:min(34dvh,210px,55vw); }
+      .upgrade-section h2{ display:none; }
+      .upgrade-btn{ min-height:48px; padding:8px 10px; margin-bottom:6px; }
+      .progress-mini{ height:6px; margin-top:5px; }
+    }
+
+    @media (orientation:landscape) and (max-height:520px){
+      .game-container{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; justify-items:center; gap:10px; }
+      .top-card{ grid-column:1; }
+      .hp-wrap{ grid-column:2; grid-row:1; align-self:end; }
+      .boss-area{ grid-column:2; grid-row:2 / span 2; width:min(70dvh,230px); height:min(70dvh,230px); }
+      .quest-card{ grid-column:1; }
+      .upgrade-section{ grid-column:3; grid-row:1 / span 3; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container" id="game">
+    <div class="top-card">
+      <div class="title-row">
+        <h1>Boss Clicker Deluxe</h1>
+        <span class="badge">Boss <span id="boss-level">1</span></span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat"><small>Gold</small><span class="gold" id="gold">0</span> 💰</div>
+        <div class="stat"><small>Klick-Schaden</small><span class="red" id="damage">1</span> ⚔️</div>
+        <div class="stat"><small>Krit-Chance</small><span class="green" id="crit-chance">0%</span> 💥</div>
+        <div class="stat"><small>Auto-Schaden</small><span class="green" id="dps">0</span>/s 🤖</div>
+      </div>
+    </div>
+
+    <div class="hp-wrap">
+      <div class="boss-name-row">
+        <span id="boss-name">Slime Boss</span>
+        <span><span id="boss-hp">100</span>/<span id="boss-max-hp">100</span> HP</span>
+      </div>
+      <div class="hp-bar-container">
+        <div id="hp-fill" class="hp-fill"></div>
+        <img id="hp-bar" class="old-hp-img" src="HP-bar/pixil-frame-0(1).png" alt="HP Bar">
+        <div class="hp-text" id="hp-percent">100%</div>
+      </div>
+    </div>
+
+    <div class="boss-area">
+      <div class="boss-shadow"></div>
+      <img id="boss" class="boss-image" src="boss/boss1.png" alt="Boss" draggable="false">
+    </div>
+
+    <div class="quest-card">
+      🎯 Quest: Besiege <span id="quest-target">3</span> Bosse — Fortschritt <span id="quest-progress">0</span>/<span id="quest-target-2">3</span>
+      <div class="progress-mini"><div id="quest-bar"></div></div>
+    </div>
+
+    <div class="upgrade-section">
+      <h2>⬆️ Upgrades</h2>
+      <button id="upgrade-damage" class="upgrade-btn" onclick="upgradeDamage()">
+        ⚔️ Schaden erhöhen
+        <div class="upgrade-info"><span class="upgrade-cost">Kosten: <span id="damage-cost">10</span> 💰</span><span class="upgrade-level">Level: <span id="damage-level">1</span></span></div>
+      </button>
+      <button id="upgrade-crit" class="upgrade-btn" onclick="upgradeCrit()">
+        💥 Kritische Treffer
+        <div class="upgrade-info"><span class="upgrade-cost">Kosten: <span id="crit-cost">50</span> 💰</span><span class="upgrade-level">Level: <span id="crit-level">0</span></span></div>
+      </button>
+      <button id="upgrade-auto" class="upgrade-btn" onclick="upgradeAuto()">
+        🤖 Auto-Klicker kaufen
+        <div class="upgrade-info"><span class="upgrade-cost">Kosten: <span id="auto-cost">120</span> 💰</span><span class="upgrade-level">Level: <span id="auto-level">0</span></span></div>
+      </button>
+      <div class="mobile-actions">
+        <button class="small-btn" onclick="saveGame(true)">Speichern</button>
+        <button class="small-btn" onclick="resetGame()">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="boss-defeated" class="boss-defeated" style="display:none;">
+    <h1>🎉 Boss besiegt!</h1>
+    <p>Belohnung: <b><span id="reward-gold">0</span> 💰</b><br>Tippe weiter, um stärker zu werden.</p>
+    <button onclick="nextBoss()">Nächster Boss ➡️</button>
+  </div>
+
+  <script>
+    const SAVE_KEY = 'boss_clicker_deluxe_save_v1';
+    let gold = 0, damage = 1, damageLevel = 1, damageCost = 10;
+    let critLevel = 0, critChance = 0, critCost = 50;
+    let autoLevel = 0, autoDamage = 0, autoCost = 120;
+    let bossMaxHp = 100, bossHp = 100, bossLevel = 1;
+    let defeatedCount = 0, questTarget = 3;
+    let rewardGold = 0;
+    let defeatedOpen = false;
+
+    const hpBarFrames = [
+      'HP-bar/pixil-frame-0(1).png','HP-bar/pixil-frame-0(2).png','HP-bar/pixil-frame-0(3).png','HP-bar/pixil-frame-0(4).png','HP-bar/pixil-frame-0(5).png',
+      'HP-bar/pixil-frame-0(6).png','HP-bar/pixil-frame-0(7).png','HP-bar/pixil-frame-0(8).png','HP-bar/pixil-frame-0(9).png','HP-bar/pixil-frame-0(10).png'
+    ];
+    const bossNames = ['Slime Boss','Stein-Golem','Schatten-König','Feuer-Boss','Diamant-Titan','Endboss Prime'];
+
+    const $ = id => document.getElementById(id);
+    const boss = $('boss'), hpBar = $('hp-bar'), hpFill = $('hp-fill'), bossDefeated = $('boss-defeated'), game = $('game');
+
+    function format(n){ return Math.floor(n).toLocaleString('de-DE'); }
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+    function updateBossPresentation(){
+      $('boss-name').textContent = bossNames[(bossLevel - 1) % bossNames.length];
+      boss.onerror = () => {
+        boss.onerror = null;
+        boss.src = 'boss/boss1.png';
+      };
+      boss.src = `boss/boss${bossLevel}.png`;
+    }
+
+    function updateHpBar(){
+      const hpPercent = clamp(bossHp / bossMaxHp, 0, 1);
+      const frameIndex = clamp(Math.floor((1 - hpPercent) * 10), 0, 9);
+      hpBar.src = hpBarFrames[frameIndex];
+      hpFill.style.width = (hpPercent * 100) + '%';
+      $('hp-percent').textContent = Math.ceil(hpPercent * 100) + '%';
+      $('boss-hp').textContent = format(Math.max(0, bossHp));
+      $('boss-max-hp').textContent = format(bossMaxHp);
+    }
+
+    function showDamageText(x, y, amount, isCrit){
+      const t = document.createElement('div');
+      t.className = 'damage-text';
+      t.textContent = isCrit ? `💥 ${format(amount)}` : `-${format(amount)}`;
+      t.style.left = `${x}px`; t.style.top = `${y}px`;
+      if(isCrit){ t.style.color = '#ffe45e'; t.style.fontSize = '2rem'; }
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 900);
+    }
+
+    function showCoinText(x, y, amount){
+      const t = document.createElement('div');
+      t.className = 'coin-pop'; t.textContent = `+${format(amount)} 💰`;
+      t.style.left = `${x}px`; t.style.top = `${y + 24}px`;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 800);
+    }
+
+    function hitBoss(amount, x, y, visual = true){
+      if(defeatedOpen) return;
+      let currentDamage = amount;
+      let isCrit = false;
+      if(visual && critLevel > 0 && Math.random() < critChance){ currentDamage *= 2; isCrit = true; }
+      bossHp -= currentDamage;
+      gold += Math.ceil(currentDamage * 0.55);
+      if(visual){
+        if(navigator.vibrate) navigator.vibrate(isCrit ? 35 : 12);
+        showDamageText(x, y, currentDamage, isCrit);
+        showCoinText(x, y, Math.ceil(currentDamage * 0.55));
+        boss.classList.add('hit'); game.classList.add('shake');
+        setTimeout(()=>{ boss.classList.remove('hit'); game.classList.remove('shake'); }, 150);
+      }
+      if(bossHp <= 0) defeatBoss();
+      updateDisplay(); updateHpBar();
+    }
+
+    function handleBossClick(e){
+      e.preventDefault();
+      const p = e.touches ? e.touches[0] : e;
+      hitBoss(damage, p.clientX, p.clientY, true);
+    }
+
+    function handlePointerHit(e){
+      e.preventDefault();
+      if(e.pointerType === 'mouse' && e.button !== 0) return;
+      hitBoss(damage, e.clientX, e.clientY, true);
+    }
+
+    function defeatBoss(){
+      if(defeatedOpen) return;
+      bossHp = 0; defeatedOpen = true; defeatedCount++;
+      rewardGold = Math.floor(80 + bossLevel * 45 + bossMaxHp * 0.08);
+      gold += rewardGold;
+      $('reward-gold').textContent = format(rewardGold);
+      if(defeatedCount % questTarget === 0){
+        const questBonus = questTarget * 120;
+        gold += questBonus;
+        $('reward-gold').textContent = format(rewardGold + questBonus) + ' inkl. Quest-Bonus';
+        questTarget += 2;
+      }
+      bossDefeated.style.display = 'flex';
+      saveGame(false); updateDisplay(); updateHpBar();
+    }
+
+    function upgradeDamage(){
+      if(gold < damageCost) return;
+      gold -= damageCost; damageLevel++; damage += Math.ceil(1 + damageLevel * .25);
+      damageCost = Math.floor(damageCost * 1.55 + 5); updateDisplay(); saveGame(false);
+    }
+    function upgradeCrit(){
+      if(gold < critCost) return;
+      gold -= critCost; critLevel++; critChance = Math.min(.65, critLevel * .075);
+      critCost = Math.floor(critCost * 1.85 + 10); updateDisplay(); saveGame(false);
+    }
+    function upgradeAuto(){
+      if(gold < autoCost) return;
+      gold -= autoCost; autoLevel++; autoDamage = autoLevel * 2 + Math.floor(autoLevel * autoLevel * .75);
+      autoCost = Math.floor(autoCost * 1.75 + 30); updateDisplay(); saveGame(false);
+    }
+
+    function nextBoss(){
+      bossLevel++; bossMaxHp = Math.floor(bossMaxHp * 2); bossHp = bossMaxHp;
+      defeatedOpen = false; bossDefeated.style.display = 'none';
+      updateBossPresentation();
+      updateDisplay(); updateHpBar(); saveGame(false);
+    }
+
+    function updateDisplay(){
+      $('gold').textContent = format(gold); $('damage').textContent = format(damage); $('boss-level').textContent = bossLevel;
+      $('damage-cost').textContent = format(damageCost); $('damage-level').textContent = damageLevel;
+      $('crit-cost').textContent = format(critCost); $('crit-level').textContent = critLevel; $('crit-chance').textContent = Math.round(critChance * 100) + '%';
+      $('auto-cost').textContent = format(autoCost); $('auto-level').textContent = autoLevel; $('dps').textContent = format(autoDamage);
+      $('upgrade-damage').disabled = gold < damageCost; $('upgrade-crit').disabled = gold < critCost; $('upgrade-auto').disabled = gold < autoCost;
+      $('quest-target').textContent = questTarget; $('quest-target-2').textContent = questTarget;
+      $('quest-progress').textContent = defeatedCount % questTarget;
+      $('quest-bar').style.width = ((defeatedCount % questTarget) / questTarget * 100) + '%';
+    }
+
+    function saveGame(manual){
+      const data = { gold, damage, damageLevel, damageCost, critLevel, critChance, critCost, autoLevel, autoDamage, autoCost, bossMaxHp, bossHp, bossLevel, defeatedCount, questTarget };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+      if(manual) alert('Gespeichert!');
+    }
+    function loadGame(){
+      try{
+        const data = JSON.parse(localStorage.getItem(SAVE_KEY));
+        if(!data) return;
+        Object.assign(window, data);
+        gold=data.gold??gold; damage=data.damage??damage; damageLevel=data.damageLevel??damageLevel; damageCost=data.damageCost??damageCost;
+        critLevel=data.critLevel??critLevel; critChance=data.critChance??critChance; critCost=data.critCost??critCost;
+        autoLevel=data.autoLevel??autoLevel; autoDamage=data.autoDamage??autoDamage; autoCost=data.autoCost??autoCost;
+        bossMaxHp=data.bossMaxHp??bossMaxHp; bossHp=data.bossHp??bossHp; bossLevel=data.bossLevel??bossLevel;
+        defeatedCount=data.defeatedCount??defeatedCount; questTarget=data.questTarget??questTarget;
+      }catch(e){ console.warn('Save konnte nicht geladen werden', e); }
+    }
+    function resetGame(){
+      if(!confirm('Wirklich alles zurücksetzen?')) return;
+      localStorage.removeItem(SAVE_KEY); location.reload();
+    }
+
+    boss.addEventListener('pointerdown', handlePointerHit, { passive:false });
+    boss.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    setInterval(()=>{ if(autoDamage > 0 && !defeatedOpen){ const r = boss.getBoundingClientRect(); hitBoss(autoDamage, r.left + r.width/2, r.top + 45, false); } }, 1000);
+    setInterval(()=>saveGame(false), 10000);
+
+    if('serviceWorker' in navigator){
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+    }
+
+    loadGame();
+    updateBossPresentation();
+    updateDisplay(); updateHpBar();
+  </script>
+</body>
+</html>
